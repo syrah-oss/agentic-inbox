@@ -21,19 +21,10 @@ Read the blog post to learn more about Cloudflare Email Service and how to use i
 
 ## Why this fork
 
-Upstream [`cloudflare/agentic-inbox`](https://github.com/cloudflare/agentic-inbox) appears to be
-unmaintained:
-
-- The last commit on upstream `main` was **17 Apr 2026** — the day the project was released.
-- **24 open issues** and **27 open pull requests**, with only **3 PRs ever merged** (all docs/deps
-  in the first week).
-- There is literally an upstream issue asking [“Is this project dead?”](https://github.com/cloudflare/agentic-inbox/issues/70).
-- Most importantly, **the Workers AI models it ships with no longer exist**, so a fresh upstream
-  deploy is broken out of the box (see the table below).
-
-We rely on Agentic Inbox, so rather than wait we maintain this fork. We try to stay close to
-upstream: fixes are kept small and upstreamable, and we're happy to open PRs back if upstream
-becomes active again.
+Upstream [`cloudflare/agentic-inbox`](https://github.com/cloudflare/agentic-inbox) simply seems
+unmaintained. We rely on Agentic Inbox, so rather than wait we maintain this fork. We try to stay
+close to upstream: fixes are kept small and upstreamable, and we're happy to open PRs back if
+upstream becomes active again.
 
 ### What this fork changes
 
