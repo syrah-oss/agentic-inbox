@@ -7,7 +7,7 @@ import { drizzle } from "drizzle-orm/durable-sqlite";
 import { eq, and, or, asc, desc, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import * as schema from "../db/schema";
-import { FOLDER_DISPLAY_NAMES, Folders } from "../../shared/folders";
+import { Folders } from "../../shared/folders";
 import type { Env } from "../types";
 import { applyMigrations, mailboxMigrations } from "./migrations";
 
@@ -594,11 +594,6 @@ export class MailboxDO extends DurableObject<Env> {
 			.select({ id: schema.emails.id })
 			.from(schema.emails)
 			.all();
-		const folderRows = this.db
-			.select({ id: schema.folders.id })
-			.from(schema.folders)
-			.all();
-
 		// Key format mirrors storeAttachments(): attachments/<emailId>/<attId>/<filename>
 		if (attachmentRows.length > 0) {
 			await this.env.BUCKET.delete(
@@ -612,26 +607,17 @@ export class MailboxDO extends DurableObject<Env> {
 		// guaranteed to be enabled for these tables.
 		this.db.delete(schema.attachments).run();
 		this.db.delete(schema.emails).run();
-		this.db.delete(schema.folders).run();
 
-		// Put the system folders back. They are a schema invariant, not user data.
-		// The migrations seed them exactly once (recorded in d1_migrations, never
-		// re-run), and createEmail() refuses an insert whose folder does not exist
-		// ("folder \"inbox\" not found"), so an address that is deleted and later
-		// re-created would reject every incoming message. getEmails() also resolves
-		// folders through a subquery, so it would list nothing either.
-		for (const id of Object.values(Folders)) {
-			this.db
-				.insert(schema.folders)
-				.values({ id, name: FOLDER_DISPLAY_NAMES[id] ?? id, is_deletable: 0 })
-				.run();
-		}
+		// The `folders` table is deliberately left alone. Folder rows are index
+		// structure, not data - the data is the emails and their attachment blobs,
+		// which are what get removed above. Deleting folders would also break the
+		// mailbox: the migrations seed them once and never re-run, and createEmail()
+		// refuses an insert whose folder is missing ("folder \"inbox\" not found"),
+		// so a re-created address would reject every incoming message.
 
 		return {
 			emailsDeleted: emailRows.length,
 			attachmentsDeleted: attachmentRows.length,
-			foldersDeleted: folderRows.length,
-			foldersRestored: Object.keys(Folders).length,
 		};
 	}
 

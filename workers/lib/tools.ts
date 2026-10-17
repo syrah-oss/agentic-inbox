@@ -56,8 +56,6 @@ type MailboxWipeStub = {
 	wipeMailbox: () => Promise<{
 		emailsDeleted: number;
 		attachmentsDeleted: number;
-		foldersDeleted: number;
-		foldersRestored: number;
 	}>;
 };
 
