@@ -111,7 +111,10 @@ app.all("*", (c) => {
 export default {
 	fetch: app.fetch,
 	async email(
-		event: { raw: ReadableStream; rawSize: number },
+		// `to` is the SMTP envelope recipient provided by Email Routing. It is what
+		// actually determines routing for catch-all / alias deliveries, so the type
+		// must expose it to receiveEmail.
+		event: { raw: ReadableStream; rawSize: number; to?: string },
 		env: Env,
 		ctx: ExecutionContext,
 	) {
