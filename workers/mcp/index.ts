@@ -7,6 +7,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
 	toolListMailboxes,
+	toolCreateMailbox,
 	toolListEmails,
 	toolGetEmail,
 	toolGetThread,
@@ -57,9 +58,10 @@ function mcpResult(result: Record<string, unknown>) {
 /**
  * EmailMCP — exposes email tools over the Model Context Protocol.
  *
- * Clients (ProtoAgent, Claude Code, Cursor, etc.) connect to the
- * `/mcp` endpoint and can list mailboxes, read/search emails,
- * draft replies, send messages, and manage folders.
+ * Clients (Claude Code, Codex, opencode, Cursor, etc.) connect to the
+ * `/mcp` endpoint and can create and list mailboxes, read and search
+ * emails (including unread-only queries), draft replies, send messages
+ * and manage folders. See docs/MCP-SETUP.md for client configuration.
  */
 export class EmailMCP extends McpAgent<Env> {
 	server = new McpServer({
@@ -90,6 +92,26 @@ export class EmailMCP extends McpAgent<Env> {
 			async () => {
 				const result = await toolListMailboxes(env);
 				return mcpText(result);
+			},
+		);
+
+		// ── create_mailbox ─────────────────────────────────────────
+		this.server.tool(
+			"create_mailbox",
+			"Create a new mailbox for an address on one of the configured domains. Mail sent to an address with no mailbox is dropped, so create the mailbox before handing the address out. Idempotent-safe: returns an error if the mailbox already exists.",
+			{
+				email: z
+					.string()
+					.email()
+					.describe("The full address to create, e.g. support@example.com"),
+				name: z
+					.string()
+					.optional()
+					.describe("Optional display name, used as the default 'from' name"),
+			},
+			async ({ email, name }) => {
+				const result = await toolCreateMailbox(env, { email, name });
+				return mcpResult(result);
 			},
 		);
 
@@ -165,19 +187,82 @@ export class EmailMCP extends McpAgent<Env> {
 		// ── search_emails ──────────────────────────────────────────
 		this.server.tool(
 			"search_emails",
-			"Search for emails matching a query across subject and body fields.",
+			"Search and filter emails. `query` matches text across subject, body, sender, recipient, cc and bcc. Pass an empty query to match all mail and use the structured filters (for example is_read=false with folder='inbox' to list unread mail).",
 			{
 				mailboxId: z.string().describe("The mailbox email address"),
-				query: z.string().describe("Search query to match against subject and body"),
+				query: z
+					.string()
+					.default("")
+					.describe(
+						"Free-text query across subject, body, sender, recipient, cc and bcc. Empty string matches everything.",
+					),
 				folder: z
 					.string()
 					.optional()
-					.describe("Optional folder to restrict search to"),
+					.describe(FOLDER_TOOL_DESCRIPTION),
+				from: z
+					.string()
+					.optional()
+					.describe("Only mail whose sender contains this value"),
+				subject: z
+					.string()
+					.optional()
+					.describe("Only mail whose subject contains this value"),
+				date_start: z
+					.string()
+					.optional()
+					.describe("Only mail dated on or after this ISO-8601 timestamp"),
+				date_end: z
+					.string()
+					.optional()
+					.describe("Only mail dated on or before this ISO-8601 timestamp"),
+				is_read: z
+					.boolean()
+					.optional()
+					.describe("false returns only unread mail, true only read mail"),
+				is_starred: z
+					.boolean()
+					.optional()
+					.describe("true returns only starred mail"),
+				has_attachment: z
+					.boolean()
+					.optional()
+					.describe("true returns only mail that has attachments"),
+				page: z.number().default(1).describe("Page number for pagination"),
+				limit: z
+					.number()
+					.default(25)
+					.describe("Maximum number of results to return"),
 			},
-			async ({ mailboxId, query, folder }) => {
+			async ({
+				mailboxId,
+				query,
+				folder,
+				from,
+				subject,
+				date_start,
+				date_end,
+				is_read,
+				is_starred,
+				has_attachment,
+				page,
+				limit,
+			}) => {
 				const denied = await verifyMailbox(mailboxId);
 				if (denied) return denied;
-				const result = await toolSearchEmails(env, mailboxId, { query, folder });
+				const result = await toolSearchEmails(env, mailboxId, {
+					query,
+					folder,
+					from,
+					subject,
+					date_start,
+					date_end,
+					is_read,
+					is_starred,
+					has_attachment,
+					page,
+					limit,
+				});
 				return mcpText(result);
 			},
 		);

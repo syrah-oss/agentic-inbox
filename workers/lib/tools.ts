@@ -36,6 +36,15 @@ type MailboxSearchStub = {
 	searchEmails: (options: {
 		query: string;
 		folder?: string;
+		from?: string;
+		subject?: string;
+		date_start?: string;
+		date_end?: string;
+		is_read?: boolean;
+		is_starred?: boolean;
+		has_attachment?: boolean;
+		page?: number;
+		limit?: number;
 	}) => Promise<unknown>;
 };
 
@@ -95,13 +104,86 @@ export async function toolGetThread(
 export async function toolSearchEmails(
 	env: Env,
 	mailboxId: string,
-	params: { query: string; folder?: string },
+	params: {
+		query: string;
+		folder?: string;
+		from?: string;
+		subject?: string;
+		date_start?: string;
+		date_end?: string;
+		is_read?: boolean;
+		is_starred?: boolean;
+		has_attachment?: boolean;
+		page?: number;
+		limit?: number;
+	},
 ) {
 	const stub = getMailboxStub(env, mailboxId);
+	// An empty `query` matches everything, so callers can use the structured
+	// filters alone (e.g. { is_read: false, folder: "inbox" }) to find new mail.
 	return (stub as unknown as MailboxSearchStub).searchEmails({
-		query: params.query,
+		query: params.query ?? "",
 		folder: params.folder,
+		from: params.from,
+		subject: params.subject,
+		date_start: params.date_start,
+		date_end: params.date_end,
+		is_read: params.is_read,
+		is_starred: params.is_starred,
+		has_attachment: params.has_attachment,
+		page: params.page,
+		limit: params.limit,
 	});
+}
+
+// ── create_mailbox ─────────────────────────────────────────────────
+
+/**
+ * Create a mailbox from the MCP/agent layer.
+ *
+ * Mirrors POST /api/v1/mailboxes so an agent can provision an address on demand
+ * (the openmail-style "new inbox" flow) instead of requiring the operator to
+ * click through the UI first. The inbound handler drops mail for addresses with
+ * no mailbox marker, so a mailbox must exist before anything can be received.
+ */
+export async function toolCreateMailbox(
+	env: Env,
+	params: { email: string; name?: string; settings?: Record<string, unknown> },
+) {
+	const email = params.email.trim().toLowerCase();
+	if (!email) return { error: "An email address is required" };
+
+	const allowedAddresses = ((env.EMAIL_ADDRESSES ?? []) as string[]).map((a) =>
+		a.trim().toLowerCase(),
+	);
+	if (allowedAddresses.length > 0 && !allowedAddresses.includes(email)) {
+		return {
+			error: `Mailbox creation is restricted to configured EMAIL_ADDRESSES: ${allowedAddresses.join(", ")}`,
+		};
+	}
+
+	const key = `mailboxes/${email}.json`;
+	if (await env.BUCKET.head(key)) {
+		return { error: `Mailbox "${email}" already exists` };
+	}
+
+	const name = params.name?.trim() || email;
+	const defaultSettings = {
+		fromName: name,
+		forwarding: { enabled: false, email: "" },
+		signature: { enabled: false, text: "" },
+		autoReply: { enabled: false, subject: "", message: "" },
+	};
+	const settings = { ...defaultSettings, ...(params.settings ?? {}) };
+
+	await env.BUCKET.put(key, JSON.stringify(settings));
+
+	// Materialise the Durable Object's default folders so the mailbox is usable
+	// immediately (and the first auto-draft does not race initialisation).
+	const stub = getMailboxStub(env, email);
+	await (stub as unknown as { getFolders: () => Promise<unknown> }).getFolders();
+
+	return { id: email, email, name, settings, created: true };
 }
 
 // ── draft_reply ────────────────────────────────────────────────────
