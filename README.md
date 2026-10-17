@@ -36,7 +36,7 @@ upstream becomes active again.
 | **Reliable auto-draft** | The `EmailAgent` is initialised before the first auto-draft, fixing 500s for mailboxes that were never opened in the UI. |
 | **Better MCP** | New `create_mailbox` tool (provision an address on demand) and `search_emails` now exposes structured filters including `is_read`, so an agent can list unread mail without inventing a keyword. |
 | **CI** | GitHub Actions job running `npm ci`, `npm audit`, `npm run typecheck` and `npm run build`. |
-| **Agent tooling** | A [skill](./skills/agentic-inbox/) and an [MCP setup guide](./docs/MCP-SETUP.md) for Claude Code, Codex and opencode. |
+| **Agent tooling** | An [MCP set-up guide](./docs/MCP-SETUP.md) for Claude Code, Codex and opencode, plus the `create_mailbox` and `is_read` MCP additions. |
 
 ## How to setup
 
@@ -68,8 +68,6 @@ search and draft mail directly instead of shelling out to a mail CLI.
 
 - **Set-up guide:** [docs/MCP-SETUP.md](./docs/MCP-SETUP.md) — configuration for **Claude Code**,
   **Codex** and **opencode**, including authenticating through Cloudflare Access with a service token.
-- **Agent skill:** [`skills/agentic-inbox`](./skills/agentic-inbox) — drop-in skill so the agent
-  knows the workflow.
 
 MCP tools exposed: `list_mailboxes`, `create_mailbox`, `list_emails`, `get_email`, `get_thread`,
 `search_emails` (structured filters incl. `is_read`), `draft_reply`, `create_draft`, `update_draft`,
