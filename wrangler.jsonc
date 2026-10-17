@@ -15,9 +15,12 @@
 		// The worker now fails closed outside local development if Access is not configured.
 		"DOMAINS": "example.com",
 		"EMAIL_ADDRESSES": [],
-		"EMAIL_AGENT_MODEL": "@cf/moonshotai/kimi-k2.5",
-		"AUTO_DRAFT_MODEL": "@cf/moonshotai/kimi-k2.5",
-		"PROMPT_INJECTION_MODEL": "@cf/meta/llama-3.1-8b-instruct-fast",
+		// Workers AI model overrides. Defaults live in workers/lib/ai-config.ts.
+		// The upstream defaults (@cf/moonshotai/kimi-k2.5 and
+		// @cf/meta/llama-3.1-8b-instruct-fast) have been retired by Workers AI.
+		"EMAIL_AGENT_MODEL": "@cf/moonshotai/kimi-k2.6",
+		"AUTO_DRAFT_MODEL": "@cf/moonshotai/kimi-k2.6",
+		"PROMPT_INJECTION_MODEL": "@cf/zai-org/glm-4.7-flash",
 		"DRAFT_VERIFIER_MODEL": "@cf/meta/llama-4-scout-17b-16e-instruct"
 	},
 	"send_email": [

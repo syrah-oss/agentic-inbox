@@ -2,10 +2,21 @@
 // Licensed under the Apache 2.0 license found in the LICENSE file or at:
 //     https://opensource.org/licenses/Apache-2.0
 
+/**
+ * Default Workers AI models.
+ *
+ * These are verified against `GET /accounts/:id/ai/models/search` — the models
+ * originally hardcoded upstream (`@cf/moonshotai/kimi-k2.5`,
+ * `@cf/meta/llama-3.1-8b-instruct-fast`) have since been retired and now 404 at
+ * runtime, which silently broke the email agent and the injection scanner.
+ *
+ * Every entry can be overridden per deployment with the matching Worker var
+ * (see ENV_MODEL_KEYS below), so no code change is needed to swap models.
+ */
 export const AI_MODELS = {
-	emailAgent: "@cf/moonshotai/kimi-k2.5",
-	autoDraft: "@cf/moonshotai/kimi-k2.5",
-	promptInjectionScanner: "@cf/meta/llama-3.1-8b-instruct-fast",
+	emailAgent: "@cf/moonshotai/kimi-k2.6",
+	autoDraft: "@cf/moonshotai/kimi-k2.6",
+	promptInjectionScanner: "@cf/zai-org/glm-4.7-flash",
 	draftVerifier: "@cf/meta/llama-4-scout-17b-16e-instruct",
 } as const;
 
