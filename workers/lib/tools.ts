@@ -57,6 +57,7 @@ type MailboxWipeStub = {
 		emailsDeleted: number;
 		attachmentsDeleted: number;
 		foldersDeleted: number;
+		foldersRestored: number;
 	}>;
 };
 

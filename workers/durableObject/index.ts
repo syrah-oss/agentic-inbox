@@ -7,7 +7,7 @@ import { drizzle } from "drizzle-orm/durable-sqlite";
 import { eq, and, or, asc, desc, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import * as schema from "../db/schema";
-import { Folders } from "../../shared/folders";
+import { FOLDER_DISPLAY_NAMES, Folders } from "../../shared/folders";
 import type { Env } from "../types";
 import { applyMigrations, mailboxMigrations } from "./migrations";
 
@@ -614,10 +614,25 @@ export class MailboxDO extends DurableObject<Env> {
 		this.db.delete(schema.emails).run();
 		this.db.delete(schema.folders).run();
 
+		// Put the system folders back. They are a schema invariant, not user data:
+		// getEmails() and searchEmails resolve a folder with
+		// `folder_id = (SELECT id FROM folders WHERE name = ? OR id = ? LIMIT 1)`,
+		// so a mailbox with no folder rows reads as EMPTY even when mail is stored
+		// in it. The migrations seed these exactly once (they are recorded in
+		// d1_migrations and never re-run), so if we delete them and stop here, an
+		// address that is later re-created is permanently folder-less.
+		for (const id of Object.values(Folders)) {
+			this.db
+				.insert(schema.folders)
+				.values({ id, name: FOLDER_DISPLAY_NAMES[id] ?? id, is_deletable: 0 })
+				.run();
+		}
+
 		return {
 			emailsDeleted: emailRows.length,
 			attachmentsDeleted: attachmentRows.length,
 			foldersDeleted: folderRows.length,
+			foldersRestored: Object.keys(Folders).length,
 		};
 	}
 
