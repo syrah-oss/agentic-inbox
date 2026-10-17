@@ -35,7 +35,6 @@ export async function isPromptInjection(
 
 	try {
 		const response = (await ai.run(
-			// @ts-expect-error — model string not in generated union
 			model,
 			{
 				messages: [
@@ -147,7 +146,6 @@ export async function verifyDraft(
 
 	try {
 		const response = (await ai.run(
-			// @ts-expect-error — model string may come from Worker configuration
 			model,
 			{
 				messages: [
