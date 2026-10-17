@@ -36,7 +36,7 @@ upstream becomes active again.
 | **Reliable auto-draft** | The `EmailAgent` is initialised before the first auto-draft, fixing 500s for mailboxes that were never opened in the UI. |
 | **Better MCP** | New `create_mailbox` tool (provision an address on demand) and `search_emails` now exposes structured filters including `is_read`, so an agent can list unread mail without inventing a keyword. |
 | **CI** | GitHub Actions job running `npm ci`, `npm audit`, `npm run typecheck` and `npm run build`. |
-| **Agent tooling** | An [MCP set-up guide](./docs/MCP-SETUP.md) for Claude Code, Codex and opencode, plus the `create_mailbox` and `is_read` MCP additions. |
+| **Agent tooling** | An [MCP set-up guide](./docs/MCP-SETUP.md) for Claude Code, Codex and opencode, plus MCP additions (`create_mailbox`, `is_read`, and an opt-in destructive `delete_mailbox` behind `YOLO_MODE`). |
 
 ## How to setup
 
@@ -72,7 +72,8 @@ search and draft mail directly instead of shelling out to a mail CLI.
 MCP tools exposed: `list_mailboxes`, `create_mailbox`, `list_emails`, `get_email`, `get_thread`,
 `search_emails` (structured filters incl. `is_read`), `draft_reply`, `create_draft`, `update_draft`,
 `delete_email`, `mark_email_read`, `move_email` — plus `send_reply` / `send_email` when the
-`send_email` binding is configured.
+`send_email` binding is configured, and a destructive `delete_mailbox` that is only registered when
+`YOLO_MODE` is enabled.
 
 ## Features
 

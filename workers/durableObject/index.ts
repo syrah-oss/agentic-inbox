@@ -570,6 +570,57 @@ export class MailboxDO extends DurableObject<Env> {
 		);
 	}
 
+	/**
+	 * Permanently remove everything this mailbox holds: attachment blobs in R2
+	 * and every row in the SQLite tables.
+	 *
+	 * Deliberately does NOT use `storage.deleteAll()` — dropping the tables while
+	 * the instance is still live leaves drizzle pointing at a missing schema.
+	 * Deleting the rows keeps the DO usable, so re-creating a mailbox with the
+	 * same address starts from a clean state.
+	 *
+	 * The caller is responsible for the `mailboxes/<address>.json` marker.
+	 */
+	async wipeMailbox() {
+		const attachmentRows = this.db
+			.select({
+				id: schema.attachments.id,
+				email_id: schema.attachments.email_id,
+				filename: schema.attachments.filename,
+			})
+			.from(schema.attachments)
+			.all();
+		const emailRows = this.db
+			.select({ id: schema.emails.id })
+			.from(schema.emails)
+			.all();
+		const folderRows = this.db
+			.select({ id: schema.folders.id })
+			.from(schema.folders)
+			.all();
+
+		// Key format mirrors storeAttachments(): attachments/<emailId>/<attId>/<filename>
+		if (attachmentRows.length > 0) {
+			await this.env.BUCKET.delete(
+				attachmentRows.map(
+					(row) => `attachments/${row.email_id}/${row.id}/${row.filename}`,
+				),
+			);
+		}
+
+		// Explicit deletes rather than relying on ON DELETE CASCADE, which is not
+		// guaranteed to be enabled for these tables.
+		this.db.delete(schema.attachments).run();
+		this.db.delete(schema.emails).run();
+		this.db.delete(schema.folders).run();
+
+		return {
+			emailsDeleted: emailRows.length,
+			attachmentsDeleted: attachmentRows.length,
+			foldersDeleted: folderRows.length,
+		};
+	}
+
 	// ── Folders (Drizzle) ──────────────────────────────────────────
 
 	async getFolders() {

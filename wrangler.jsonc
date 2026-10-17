@@ -15,6 +15,10 @@
 		// The worker now fails closed outside local development if Access is not configured.
 		"DOMAINS": "example.com",
 		"EMAIL_ADDRESSES": [],
+		// Opt-in switch for destructive maintenance tools. While this is not
+		// "true", the delete_mailbox MCP tool is not registered at all.
+		// See docs/MCP-SETUP.md. Leave it off unless you mean it.
+		"YOLO_MODE": "false",
 		// Workers AI model overrides. Defaults live in workers/lib/ai-config.ts.
 		// The upstream defaults (@cf/moonshotai/kimi-k2.5 and
 		// @cf/meta/llama-3.1-8b-instruct-fast) have been retired by Workers AI.

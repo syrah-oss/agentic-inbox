@@ -24,6 +24,7 @@ or a custom domain like `inbox.example.com`.
 | --- | --- |
 | `list_mailboxes` | List all mailboxes |
 | `create_mailbox` | Create a mailbox for an address on your domain |
+| `delete_mailbox` | **Destructive, opt-in** — permanently delete a mailbox and all its mail. Not registered unless [`YOLO_MODE`](#2-destructive-tools-yolo_mode) is enabled |
 | `list_emails` | List mail in a folder |
 | `get_email` | Read one email's full body |
 | `get_thread` | Read a whole conversation |
@@ -39,7 +40,38 @@ Every tool takes a `mailboxId`, which is the **full mailbox address** (e.g. `hel
 
 ---
 
-## 2. Authenticate through Cloudflare Access
+## 2. Destructive tools (`YOLO_MODE`)
+
+`delete_mailbox` permanently destroys a mailbox — every email, every attachment in R2, the
+mailbox's Durable Object rows, and the agent's chat history. There is no undo.
+
+It is therefore **off by default**, and off means the tool is **not registered at all**: a default
+deployment does not expose it, so an agent cannot reach it even if asked.
+
+To enable it, set the `YOLO_MODE` Worker var:
+
+```jsonc
+// wrangler.jsonc
+"vars": {
+  "YOLO_MODE": "true"
+}
+```
+
+Accepted truthy values are `true`, `1` and `yes` (case-insensitive). Anything else — including
+unset — leaves the tool absent.
+
+Recommended only for a throwaway or single-user deployment. If you enable it:
+
+- The tool still requires `confirm: true` in its arguments, as a guard against an accidental call.
+- Re-check who can reach `/mcp`: with Cloudflare Access, that is whoever holds the Access policy
+  or the service token. A delete tool plus a leaked token is a bad combination — see
+  [§5 Security notes](#5-security-notes).
+- Emails already delivered to a *different* mailbox are untouched; this only affects the one
+  mailbox you name.
+
+---
+
+## 3. Authenticate through Cloudflare Access
 
 MCP clients can't complete an interactive Access login, so use a **service token**. It acts as a
 machine identity that Access accepts on every request.
@@ -112,7 +144,7 @@ reaching Access at all — check the hostname and that the Access app covers it.
 
 ---
 
-## 3. Configure your client
+## 4. Configure your client
 
 ### opencode
 
@@ -188,7 +220,7 @@ env_http_headers = { "CF-Access-Client-Id" = "CF_ACCESS_CLIENT_ID", "CF-Access-C
 
 ---
 
-## 4. Security notes
+## 5. Security notes
 
 - **The service token is a password to every mailbox.** The app has no per-mailbox
   authorisation: anyone holding a valid Access credential (user or service token) can read and
@@ -202,7 +234,7 @@ env_http_headers = { "CF-Access-Client-Id" = "CF_ACCESS_CLIENT_ID", "CF-Access-C
 
 ---
 
-## 5. Troubleshooting
+## 6. Troubleshooting
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |

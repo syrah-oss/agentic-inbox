@@ -52,6 +52,18 @@ type RateLimitStub = {
 	checkSendRateLimit: () => Promise<string | null>;
 };
 
+type MailboxWipeStub = {
+	wipeMailbox: () => Promise<{
+		emailsDeleted: number;
+		attachmentsDeleted: number;
+		foldersDeleted: number;
+	}>;
+};
+
+type AgentWipeStub = {
+	wipeHistory: () => Promise<{ wiped: boolean }>;
+};
+
 // ── list_mailboxes ─────────────────────────────────────────────────
 
 export async function toolListMailboxes(env: Env) {
@@ -184,6 +196,48 @@ export async function toolCreateMailbox(
 	await (stub as unknown as { getFolders: () => Promise<unknown> }).getFolders();
 
 	return { id: email, email, name, settings, created: true };
+}
+
+// ── delete_mailbox ─────────────────────────────────────────────────
+
+/**
+ * Permanently delete a mailbox and everything belonging to it.
+ *
+ * Destructive and irreversible. Removes, in order:
+ *   - the attachment blobs in R2 and every table row in the mailbox's Durable
+ *     Object (via `wipeMailbox`),
+ *   - the agent's persisted chat history (best-effort — see EmailAgent.wipeHistory),
+ *   - the `mailboxes/<address>.json` marker, which is what actually stops mail
+ *     being accepted. It is deleted last so a mid-way failure leaves the mailbox
+ *     still visible rather than half-gone.
+ *
+ * Exposed over MCP only when YOLO_MODE is enabled; see docs/MCP-SETUP.md.
+ */
+export async function toolDeleteMailbox(env: Env, mailboxId: string) {
+	const email = mailboxId.trim().toLowerCase();
+	if (!email) return { error: "An email address is required" };
+
+	const key = `mailboxes/${email}.json`;
+	if (!(await env.BUCKET.head(key))) {
+		return { error: `Mailbox "${email}" not found` };
+	}
+
+	const stub = getMailboxStub(env, email);
+	const mailbox = await (stub as unknown as MailboxWipeStub).wipeMailbox();
+
+	let agentHistoryWiped = false;
+	try {
+		const agent = env.EMAIL_AGENT.get(env.EMAIL_AGENT.idFromName(email));
+		const result = await (agent as unknown as AgentWipeStub).wipeHistory();
+		agentHistoryWiped = Boolean(result?.wiped);
+	} catch (e) {
+		// Never block the delete on agent history cleanup.
+		console.error("Agent history wipe failed:", (e as Error).message);
+	}
+
+	await env.BUCKET.delete(key);
+
+	return { status: "deleted", mailboxId: email, ...mailbox, agentHistoryWiped };
 }
 
 // ── draft_reply ────────────────────────────────────────────────────
